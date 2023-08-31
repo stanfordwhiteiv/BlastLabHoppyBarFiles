@@ -147,7 +147,7 @@ class SHPB_analysis:
         #print(end_index_trans)
 
         for i in range(start_index_trans, 0, -1): # iterate backwards starting from start_index
-            if norm_transmitted_bar_filtered[i] > 0.0: #can get away with 0.0 because of bias correction
+            if norm_transmitted_bar_filtered[i] > -0.005: 
                 start_index_trans = i - round(0.01*i)
                 break
         #print(start_index_trans)
@@ -178,7 +178,7 @@ class SHPB_analysis:
 
         for i in range(start_index_ref, 0, -1): # iterate backwards starting from start_index
             #print(i)
-            if norm_incident_bar_filtered[i] < 0.0: #can get away with 0.0 because of bias correction
+            if norm_incident_bar_filtered[i] < 0.005:
                 start_index_ref = i - round(0.01*i)
                 break
         #print(start_index_ref)
@@ -210,26 +210,28 @@ class SHPB_analysis:
         #####################################
 
         #cost function for force balance
-        def cost_function(x, incident_wave, reflected_wave, transmitted_wave):
+
+        print(len(incident_wave))
+
+        def cost_function(x, incident_wave, reflected_wave, transmitted_wave, shift_penalty=1e-8):
             shift1, shift2 = x
-            reflected_wave_shifted = shift(reflected_wave, shift1, order=3, cval=0)
-            transmitted_wave_shifted = shift(transmitted_wave, shift2, order=3, cval=0)
+            reflected_wave_shifted = shift(reflected_wave, shift1, order=3, mode="constant", cval=0)
+            transmitted_wave_shifted = shift(transmitted_wave, shift2, order=3, mode="constant", cval=0)
 
-            # Compute difference between incident wave and shifted waves
-            difference = incident_wave + reflected_wave_shifted - transmitted_wave_shifted 
-            
-            # Penalize differences where one of the values equals 0 and the adjacent values are also 0
-            reflected_zero_mask = (reflected_wave_shifted == 0) & (np.roll(reflected_wave_shifted, 1) == 0) & (np.roll(reflected_wave_shifted, -1) == 0)
-            transmitted_zero_mask = (transmitted_wave_shifted == 0) & (np.roll(transmitted_wave_shifted, 1) == 0) & (np.roll(transmitted_wave_shifted, -1) == 0)
+            # trans = ref + inc
+            difference = incident_wave + reflected_wave_shifted - transmitted_wave_shifted
 
-            difference[reflected_zero_mask] = np.power(difference[reflected_zero_mask], 4)
-            difference[~reflected_zero_mask] = np.power(difference[~reflected_zero_mask], 2)
-            difference[transmitted_zero_mask] = np.power(difference[transmitted_zero_mask], 4)
-            difference[~transmitted_zero_mask] = np.power(difference[~transmitted_zero_mask], 2)
+            # calculate the sum of squared differences
+            sum_of_squared_differences = np.sum(difference**2)
 
-            print(np.sum(difference))
-            
-            return np.sum(difference)
+            # calculate penalty for large shifts; normalize by power of 2/3 of wave size (increases a lot to start, increased wave size decreases importance of this)
+            shift_penalty = shift_penalty/(len(incident_wave)**(2/3)) * (shift1**2 + shift2**2)
+
+            # combine the cost and penalty terms
+            total_cost = sum_of_squared_differences + shift_penalty
+
+            return total_cost
+        
 
         initial_guess = [0, 0]
         result = minimize(cost_function, initial_guess, args=(incident_wave, reflected_wave, transmitted_wave), method="powell") #cobyla or powell are best
