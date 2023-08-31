@@ -274,10 +274,10 @@ class SHPB_analysis:
         #create second plot of waves
         peak_index = reflected_wave.argmax()
         peak_time = data['time'].values[peak_index] * 1e6
-        axs[1].plot(data['time'].values[:time_window_end]*1e6, incident_wave, label='Incident Wave', color = 'b')
+        axs[1].plot(data['time'].values[:time_window_end]*1e6, -1*incident_wave, label='Incident Wave', color = 'b')
         axs[1].plot(data['time'].values[:time_window_end]*1e6, reflected_wave, label='Reflected Wave', color = 'g')
         axs[1].axvline(peak_time, linestyle='--', color='grey')
-        axs[1].plot(data['time'].values[:time_window_end]*1e6, transmitted_wave, label='Transmitted Wave', color = 'r')
+        axs[1].plot(data['time'].values[:time_window_end]*1e6, -1*transmitted_wave, label='Transmitted Wave', color = 'r')
         axs[1].set_xlabel('Time (us)')
         #axs[1].set_ylabel('Amplitude')
         axs[1].set_title('Waves')
@@ -312,10 +312,10 @@ class SHPB_analysis:
             peak_index = reflected_wave_new.argmax()
             peak_time = data['time'].values[peak_index] * 1e6
             axs[1].clear()
-            axs[1].plot(data['time'].values[:time_window_end]*1e6, incident_wave, label='Incident Wave', color='b')
+            axs[1].plot(data['time'].values[:time_window_end]*1e6, -1*incident_wave, label='Incident Wave', color='b')
             axs[1].plot(data['time'].values[:time_window_end]*1e6, reflected_wave_new, label='Reflected Wave',color='g')
             axs[1].axvline(peak_time, linestyle='--', color='grey')
-            axs[1].plot(data['time'].values[:time_window_end]*1e6, transmitted_wave_new, label='Transmitted Wave',color='r')
+            axs[1].plot(data['time'].values[:time_window_end]*1e6, -1*transmitted_wave_new, label='Transmitted Wave',color='r')
             axs[1].set_xlabel('Time (us)')
             axs[1].set_ylabel('Amplitude')
             axs[1].set_title('Waves')
