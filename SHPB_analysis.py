@@ -29,12 +29,21 @@ class SHPB_analysis:
 
         #trim and cast the data
         data = data.iloc[3:,1:] #trim header and first 3 rows
-        data = data.astype(float)
 
         #incident, transmission, and time dataframes
         data["incident_bar"] = data.iloc[:,0]
         data["transmitted_bar"] = data.iloc[:,1]
         data['time'] = np.arange(len(data)) * (1/rate)  # add time column based on sampling rate
+
+        #function to fix broken values
+        def convert_to_float(value):
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return 0
+
+        data['incident_bar'] = data['incident_bar'].apply(convert_to_float)
+        data['transmitted_bar'] = data['transmitted_bar'].apply(convert_to_float)
 
         if np.max(data["incident_bar"]) > 5: #check scale
             data["incident_bar"] /= 1000
@@ -178,7 +187,7 @@ class SHPB_analysis:
 
         for i in range(start_index_ref, 0, -1): # iterate backwards starting from start_index
             #print(i)
-            if norm_incident_bar_filtered[i] < 0.005:
+            if norm_incident_bar_filtered[i] < 0.01:
                 start_index_ref = i - round(0.01*i)
                 break
         #print(start_index_ref)
@@ -233,6 +242,13 @@ class SHPB_analysis:
             return total_cost
         
 
+        """inc_max = np.argmax(incident_wave)
+        trans_max = np.argmax(transmitted_wave)
+        shift2_guess = inc_max - trans_max
+
+        ref_max = np.argmax(reflected_wave)
+        shift1_guess = ref_max - np.argmax(incident_wave-transmitted_wave)"""
+
         initial_guess = [0, 0]
         result = minimize(cost_function, initial_guess, args=(incident_wave, reflected_wave, transmitted_wave), method="powell") #cobyla or powell are best
         optimal_shift1, optimal_shift2 = result.x
@@ -283,12 +299,16 @@ class SHPB_analysis:
         axs[1].set_title('Waves')
         axs[1].legend()
 
+        #slider parameters
+        slider_range = len(incident_wave)/4
+        slider_step = np.ceil(len(incident_wave)*0.001)
+        
         #create sliders for adjusting shifts
         axcolor = 'lightgoldenrodyellow'
         ax_shift1 = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
         ax_shift2 = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
-        shift1_slider = Slider(ax_shift1, 'Reflected Shift', -500,500, valinit=0, valstep=1)
-        shift2_slider = Slider(ax_shift2, 'Transmitted Shift', -500,500, valinit=0, valstep=1)
+        shift1_slider = Slider(ax_shift1, 'Reflected Shift', -slider_range,slider_range, valinit=0, valstep=1)
+        shift2_slider = Slider(ax_shift2, 'Transmitted Shift', -slider_range,slider_range, valinit=0, valstep=1)
 
         #function to update plots when sliders are adjusted
         def update(val):
@@ -380,6 +400,8 @@ class SHPB_analysis:
         stress_argmax = sample_stress.argmax()
         strain_argmax = sample_strain.argmax()
 
+        cut_off_index = len(sample_strain)
+
         for i in range(len(sample_strain)-1):
             if sample_strain[i+1] < sample_strain[i]:
                 if i > strain_argmax:
@@ -424,19 +446,19 @@ class SHPB_analysis:
             # write the data to the sheet, leaving a blank column to the right
             start_col = 0
             for section_name, df in data_dict.items():
-                # Write the section name to the first row of the section
+                # write the section name to the first row of the section
                 worksheet.write(0, start_col, section_name)
-                # Write the data to the sheet, leaving a blank column to the right
+                # write the data to the sheet, leaving a blank column to the right
                 df.to_excel(writer, sheet_name=sheet_name, startrow=1, startcol=start_col, index=False)
-                # Increment the start column for the next section
+                # increment the start column for the next section
                 start_col += len(df.columns) + 1 # Add one for the blank column to the right
-                # Insert a blank column to the right of the section
+                # insert a blank column to the right of the section
                 worksheet.write_blank(0, start_col-1, "")
 
-            # Set the column widths to be equal for all columns
+            # set the column widths to be equal for all columns
             for i, col_width in enumerate([20] * start_col):
                 worksheet.set_column(i, i, col_width)
-                # Add a chart for the 'Stress vs Strain' data set
+                # add a chart for the 'Stress vs Strain' data set
             writer.close()
 
 
